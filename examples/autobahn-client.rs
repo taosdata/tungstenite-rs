@@ -11,18 +11,18 @@ fn get_case_count() -> Result<u32> {
     let (mut socket, _) = connect("ws://localhost:9001/getCaseCount")?;
     let msg = socket.read()?;
     socket.close(None)?;
-    Ok(msg.into_text()?.parse::<u32>().unwrap())
+    Ok(msg.into_text()?.as_str().parse::<u32>().unwrap())
 }
 
 fn update_reports() -> Result<()> {
-    let (mut socket, _) = connect(&format!("ws://localhost:9001/updateReports?agent={}", AGENT))?;
+    let (mut socket, _) = connect(format!("ws://localhost:9001/updateReports?agent={AGENT}"))?;
     socket.close(None)?;
     Ok(())
 }
 
 fn run_test(case: u32) -> Result<()> {
     info!("Running test case {}", case);
-    let case_url = &format!("ws://localhost:9001/runCase?case={}&agent={}", case, AGENT);
+    let case_url = format!("ws://localhost:9001/runCase?case={case}&agent={AGENT}");
 
     let mut config = WebSocketConfig::default();
     config.compression = Some(DeflateConfig::default());
@@ -46,7 +46,7 @@ fn main() {
     for case in 1..=total {
         if let Err(e) = run_test(case) {
             match e {
-                Error::ConnectionClosed | Error::Protocol(_) | Error::Utf8 => (),
+                Error::ConnectionClosed | Error::Protocol(_) | Error::Utf8(_) => (),
                 err => error!("test: {}", err),
             }
         }

@@ -14,8 +14,8 @@ fn main() {
                 println!("Received a new ws handshake");
                 println!("The request's path is: {}", req.uri().path());
                 println!("The request's headers are:");
-                for (ref header, _value) in req.headers() {
-                    println!("* {}", header);
+                for (header, _value) in req.headers() {
+                    println!("* {header}");
                 }
 
                 // Let's add an additional header to our response to the client.
@@ -26,20 +26,21 @@ fn main() {
                 Ok(response)
             };
 
-            let mut config = WebSocketConfig::default();
-            // This setting allows to accept client frames which are not masked
-            // This is not in compliance with RFC 6455 but might be handy in some
-            // rare cases where it is necessary to integrate with existing/legacy
-            // clients which are sending unmasked frames
-            config.accept_unmasked_frames = true;
+            let config = Some(
+                WebSocketConfig::default()
+                    // This setting allows to accept client frames which are not masked
+                    // This is not in compliance with RFC 6455 but might be handy in some
+                    // rare cases where it is necessary to integrate with existing/legacy
+                    // clients which are sending unmasked frames
+                    .accept_unmasked_frames(true),
+            );
 
-            let mut websocket =
-                accept_hdr_with_config(stream.unwrap(), callback, Some(config)).unwrap();
+            let mut websocket = accept_hdr_with_config(stream.unwrap(), callback, config).unwrap();
 
             loop {
                 let msg = websocket.read().unwrap();
                 if msg.is_binary() || msg.is_text() {
-                    println!("received message {}", msg);
+                    println!("received message {msg}");
                 }
             }
         });

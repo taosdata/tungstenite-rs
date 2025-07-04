@@ -1,7 +1,6 @@
 //! Methods to connect to a WebSocket as a client.
 
 use std::{
-    convert::TryFrom,
     io::{Read, Write},
     net::{SocketAddr, TcpStream, ToSocketAddrs},
     result::Result as StdResult,
@@ -52,6 +51,12 @@ pub fn connect_with_config<Req: IntoClientRequest>(
     ) -> Result<(WebSocket<MaybeTlsStream<TcpStream>>, Response)> {
         let uri = request.uri();
         let mode = uri_mode(uri)?;
+
+        #[cfg(not(any(feature = "native-tls", feature = "__rustls-tls")))]
+        if let Mode::Tls = mode {
+            return Err(Error::Url(UrlError::TlsFeatureNotEnabled));
+        }
+
         let host = request.uri().host().ok_or(Error::Url(UrlError::NoHostName))?;
         let host = if host.starts_with('[') { &host[1..host.len() - 1] } else { host };
         let port = uri.port_u16().unwrap_or(match mode {
@@ -83,14 +88,14 @@ pub fn connect_with_config<Req: IntoClientRequest>(
     let (parts, _) = request.into_client_request()?.into_parts();
     let mut uri = parts.uri.clone();
 
-    for attempt in 0..(max_redirects + 1) {
+    for attempt in 0..=max_redirects {
         let request = create_request(&parts, &uri);
 
         match try_client_handshake(request, config) {
             Err(Error::Http(res)) if res.status().is_redirection() && attempt < max_redirects => {
                 if let Some(location) = res.headers().get("Location") {
                     uri = location.to_str()?.parse::<Uri>()?;
-                    debug!("Redirecting to {:?}", uri);
+                    debug!("Redirecting to {uri:?}");
                     continue;
                 } else {
                     warn!("No `Location` found in redirect");
@@ -124,7 +129,7 @@ pub fn connect<Req: IntoClientRequest>(
 
 fn connect_to_some(addrs: &[SocketAddr], uri: &Uri) -> Result<TcpStream> {
     for addr in addrs {
-        debug!("Trying to contact {} at {}...", uri, addr);
+        debug!("Trying to contact {uri} at {addr}...");
         if let Ok(stream) = TcpStream::connect(addr) {
             return Ok(stream);
         }
@@ -191,13 +196,13 @@ pub trait IntoClientRequest {
     fn into_client_request(self) -> Result<Request>;
 }
 
-impl<'a> IntoClientRequest for &'a str {
+impl IntoClientRequest for &str {
     fn into_client_request(self) -> Result<Request> {
         self.parse::<Uri>()?.into_client_request()
     }
 }
 
-impl<'a> IntoClientRequest for &'a String {
+impl IntoClientRequest for &String {
     fn into_client_request(self) -> Result<Request> {
         <&str as IntoClientRequest>::into_client_request(self)
     }
@@ -209,7 +214,7 @@ impl IntoClientRequest for String {
     }
 }
 
-impl<'a> IntoClientRequest for &'a Uri {
+impl IntoClientRequest for &Uri {
     fn into_client_request(self) -> Result<Request> {
         self.clone().into_client_request()
     }
@@ -241,7 +246,7 @@ impl IntoClientRequest for Uri {
 }
 
 #[cfg(feature = "url")]
-impl<'a> IntoClientRequest for &'a url::Url {
+impl IntoClientRequest for &url::Url {
     fn into_client_request(self) -> Result<Request> {
         self.as_str().into_client_request()
     }
@@ -260,7 +265,7 @@ impl IntoClientRequest for Request {
     }
 }
 
-impl<'h, 'b> IntoClientRequest for httparse::Request<'h, 'b> {
+impl IntoClientRequest for httparse::Request<'_, '_> {
     fn into_client_request(self) -> Result<Request> {
         use crate::handshake::headers::FromHttparse;
         Request::from_httparse(self)

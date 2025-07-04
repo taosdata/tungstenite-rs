@@ -11,6 +11,9 @@
     unused_imports,
     unused_import_braces
 )]
+// This can be removed when `error::Error::Http`, `handshake::HandshakeError::Interrupted` and
+// `handshake::server::ErrorResponse` are boxed.
+#![allow(clippy::result_large_err)]
 
 #[cfg(feature = "handshake")]
 pub use http;
@@ -30,13 +33,17 @@ pub mod stream;
 mod tls;
 pub mod util;
 
+#[cfg(feature = "handshake")]
 const READ_BUFFER_CHUNK_SIZE: usize = 4096;
+#[cfg(feature = "handshake")]
 type ReadBuffer = buffer::ReadBuffer<READ_BUFFER_CHUNK_SIZE>;
 
 pub use crate::{
     error::{Error, Result},
-    protocol::{Message, WebSocket},
+    protocol::{frame::Utf8Bytes, Message, WebSocket},
 };
+// re-export bytes since used in `Message` API.
+pub use bytes::Bytes;
 
 #[cfg(feature = "handshake")]
 pub use crate::{
