@@ -7,9 +7,9 @@ authors = ["Alexey Galakhov", "Daniel Abramov"]
 license = "MIT OR Apache-2.0"
 readme = "README.md"
 homepage = "https://github.com/snapview/tungstenite-rs"
-documentation = "https://docs.rs/tungstenite/0.26.2"
+documentation = "https://docs.rs/tungstenite/0.27.0"
 repository = "https://github.com/snapview/tungstenite-rs"
-version = "0.26.2"
+version = "0.27.0"
 edition = "2021"
 rust-version = "1.63"
 include = ["benches/**/*", "src/**/*", "examples/**/*", "LICENSE-*", "README.md", "CHANGELOG.md"]
@@ -69,7 +69,7 @@ optional = true
 version = "0.26"
 
 [dev-dependencies]
-criterion = "0.5.0"
+criterion = "0.6"
 env_logger = "0.11"
 input_buffer = "0.5.0"
 rand = "0.9.0"
@@ -89,6 +89,11 @@ harness = false
 [[bench]]
 name = "read"
 harness = false
+
+[[bench]]
+name = "e2e"
+harness = false
+required-features = ["handshake"]
 
 [[example]]
 name = "client"
